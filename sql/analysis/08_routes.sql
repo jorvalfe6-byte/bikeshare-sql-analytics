@@ -14,7 +14,7 @@ JOIN core.station   AS so ON so.station_id = f.start_station_id
 JOIN core.station   AS sd ON sd.station_id = f.end_station_id
 WHERE f.is_valid AND f.is_docked AND NOT f.is_same_station
 GROUP BY so.name, sd.name
-ORDER BY trips DESC, origin, destination
+ORDER BY trips DESC, so.name COLLATE "C", sd.name COLLATE "C"
 LIMIT 15;
 
 -- (b) Top 10 stations where people return to where they started: tourist
@@ -28,5 +28,5 @@ FROM mart.fact_trip AS f
 JOIN core.station   AS s ON s.station_id = f.start_station_id
 WHERE f.is_valid AND f.is_same_station
 GROUP BY s.name
-ORDER BY round_trips DESC, station
+ORDER BY round_trips DESC, s.name COLLATE "C"
 LIMIT 10;

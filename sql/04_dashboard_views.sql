@@ -75,7 +75,7 @@ WITH d AS (
 SELECT RANK() OVER (ORDER BY d.trips DESC) AS rank, s.name AS station, d.trips,
        ROUND(100.0 * d.trips / SUM(d.trips) OVER (), 2) AS pct_of_departures, d.pct_members
 FROM d JOIN core.station AS s USING (station_id)
-ORDER BY d.trips DESC, s.name
+ORDER BY d.trips DESC, s.name COLLATE "C"      -- explicit collation: tie-breaks must not depend on the server locale
 LIMIT 15;
 
 -- Concentration (see analysis/06b)
@@ -130,7 +130,7 @@ SELECT RANK() OVER (ORDER BY COUNT(*) DESC) AS rank, s.name AS station, COUNT(*)
 FROM mart.fact_trip AS f JOIN core.station AS s ON s.station_id = f.start_station_id
 WHERE f.is_valid AND f.is_same_station
 GROUP BY s.name
-ORDER BY round_trips DESC, station
+ORDER BY round_trips DESC, s.name COLLATE "C"
 LIMIT 10;
 
 -- Top one-way routes (see analysis/08a)
@@ -144,7 +144,7 @@ JOIN core.station AS so ON so.station_id = f.start_station_id
 JOIN core.station AS sd ON sd.station_id = f.end_station_id
 WHERE f.is_valid AND f.is_docked AND NOT f.is_same_station
 GROUP BY so.name, sd.name
-ORDER BY trips DESC, origin, destination
+ORDER BY trips DESC, so.name COLLATE "C", sd.name COLLATE "C"
 LIMIT 10;
 
 -- Weekday x hour heatmap (see analysis/10)

@@ -18,7 +18,7 @@ SELECT RANK() OVER (ORDER BY d.trips DESC)                       AS rank,
        d.pct_members
 FROM departures AS d
 JOIN core.station AS s USING (station_id)
-ORDER BY d.trips DESC, s.name
+ORDER BY d.trips DESC, s.name COLLATE "C"
 LIMIT 15;
 
 -- (b) Concentration: share of departures made by the top 1 %, 10 % and

@@ -37,7 +37,7 @@ WHERE NULLIF(end_station_id, '') IS NOT NULL AND NULLIF(end_lat, '') IS NOT NULL
 
 INSERT INTO core.station (station_id, name, lat, lng)
 WITH nombre AS (
-    SELECT station_id, MODE() WITHIN GROUP (ORDER BY name) AS name
+    SELECT station_id, MODE() WITHIN GROUP (ORDER BY name COLLATE "C") AS name   -- fixed collation: ties must not depend on the server locale
     FROM points
     WHERE NULLIF(name, '') IS NOT NULL
     GROUP BY station_id
