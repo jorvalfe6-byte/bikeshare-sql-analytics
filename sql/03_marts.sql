@@ -13,6 +13,11 @@
 --                                              station (a failed undock)
 --                    - over_24h              : > 24 h (bike lost or not docked)
 --   * Duration   : minutes between ended_at and started_at.
+--   * Distance   : straight-line (haversine) km between start and end point.
+--                  NULL when a coordinate is missing or outside the D.C. metro
+--                  box (lat 38.6–39.3, lng -77.6 to -76.8): a few dozen GPS
+--                  glitches that would otherwise invent 100 km trips.
+--                  It is a lower bound of the real distance ridden.
 --   * Docked trip: it starts and ends at a station. Electric bikes may be
 --                  parked anywhere, so those trips have a NULL station
 --                  (so do 4,908 classic-bike trips that were not docked).
@@ -26,6 +31,13 @@ CREATE MATERIALIZED VIEW mart.fact_trip AS
 WITH base AS (
     SELECT t.*,
            EXTRACT(EPOCH FROM t.ended_at - t.started_at) AS seconds,
+           CASE WHEN t.start_lat BETWEEN 38.6 AND 39.3 AND t.end_lat BETWEEN 38.6 AND 39.3
+                 AND t.start_lng BETWEEN -77.6 AND -76.8 AND t.end_lng BETWEEN -77.6 AND -76.8
+                THEN ROUND((2 * 6371 * ASIN(LEAST(1, SQRT(
+                         POWER(SIN(RADIANS(t.end_lat - t.start_lat) / 2), 2)
+                       + COS(RADIANS(t.start_lat)) * COS(RADIANS(t.end_lat))
+                         * POWER(SIN(RADIANS(t.end_lng - t.start_lng) / 2), 2)))))::NUMERIC, 3)
+           END AS distance_km,
            -- explicit NOT NULL tests: comparing against a NULL station would
            -- turn these flags (and everything derived from them) into NULL
            (t.start_station_id IS NOT NULL AND t.end_station_id IS NOT NULL) AS is_docked,
@@ -52,6 +64,7 @@ SELECT ride_id,
        EXTRACT(ISODOW FROM started_at)::SMALLINT      AS iso_dow,        -- 1 = Monday
        EXTRACT(ISODOW FROM started_at) >= 6           AS is_weekend,
        ROUND((seconds / 60.0)::NUMERIC, 2)            AS duration_min,
+       distance_km,
        start_station_id,
        end_station_id,
        is_docked,

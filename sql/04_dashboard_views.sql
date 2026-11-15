@@ -8,7 +8,8 @@ SET client_min_messages = warning;
 
 DROP VIEW IF EXISTS mart.dash_kpis, mart.dash_monthly, mart.dash_hourly, mart.dash_riders,
                     mart.dash_stations, mart.dash_concentration, mart.dash_rebalance,
-                    mart.dash_leisure, mart.dash_routes CASCADE;
+                    mart.dash_leisure, mart.dash_routes, mart.dash_heat, mart.dash_map,
+                    mart.dash_speed, mart.dash_duration CASCADE;
 
 -- KPIs (see analysis/01)
 CREATE VIEW mart.dash_kpis AS
@@ -145,3 +146,61 @@ WHERE f.is_valid AND f.is_docked AND NOT f.is_same_station
 GROUP BY so.name, sd.name
 ORDER BY trips DESC, origin, destination
 LIMIT 10;
+
+-- Weekday x hour heatmap (see analysis/10)
+CREATE VIEW mart.dash_heat AS
+WITH days AS (
+    SELECT iso_dow, COUNT(DISTINCT trip_date) AS n_days FROM mart.fact_trip WHERE is_valid GROUP BY iso_dow
+)
+SELECT f.iso_dow AS dow, f.start_hour AS hour, ROUND(COUNT(*)::NUMERIC / d.n_days) AS trips_per_day
+FROM mart.fact_trip AS f JOIN days AS d USING (iso_dow)
+WHERE f.is_valid
+GROUP BY f.iso_dow, f.start_hour, d.n_days;
+
+-- Station map: every station with its departures and its weekday-morning
+-- net flow (arrivals - departures, 7-9 h, docked trips). See analysis/07.
+CREATE VIEW mart.dash_map AS
+WITH dep AS (
+    SELECT start_station_id AS station_id, COUNT(*) AS departures
+    FROM mart.fact_trip WHERE is_valid AND start_station_id IS NOT NULL GROUP BY 1
+),
+morning AS (
+    SELECT station_id, SUM(arrivals) - SUM(departures) AS net_morning
+    FROM (SELECT start_station_id AS station_id, COUNT(*) AS departures, 0 AS arrivals
+          FROM mart.fact_trip
+          WHERE is_valid AND is_docked AND NOT is_weekend AND start_hour BETWEEN 7 AND 9 GROUP BY 1
+          UNION ALL
+          SELECT end_station_id, 0, COUNT(*)
+          FROM mart.fact_trip
+          WHERE is_valid AND is_docked AND NOT is_weekend AND start_hour BETWEEN 7 AND 9 GROUP BY 1) AS x
+    GROUP BY station_id
+)
+SELECT s.name AS station, s.lat, s.lng, d.departures, COALESCE(m.net_morning, 0) AS net_morning
+FROM core.station AS s
+JOIN dep AS d USING (station_id)
+LEFT JOIN morning AS m USING (station_id);
+
+-- Distance and speed (see analysis/11)
+CREATE VIEW mart.dash_speed AS
+SELECT rideable_type,
+       COUNT(*) AS trips,
+       ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY distance_km)::NUMERIC, 2) AS median_km,
+       ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY distance_km / (duration_min / 60.0))::NUMERIC, 1) AS median_kmh
+FROM mart.fact_trip
+WHERE is_valid AND distance_km >= 0.1 AND duration_min >= 2
+GROUP BY rideable_type;
+
+-- Duration distribution (see analysis/12)
+CREATE VIEW mart.dash_duration AS
+WITH b AS (
+    SELECT member_type,
+           CASE WHEN duration_min < 5 THEN 1 WHEN duration_min < 10 THEN 2 WHEN duration_min < 20 THEN 3
+                WHEN duration_min < 30 THEN 4 WHEN duration_min < 60 THEN 5 ELSE 6 END AS bucket
+    FROM mart.fact_trip WHERE is_valid
+)
+SELECT bucket,
+       CASE bucket WHEN 1 THEN 'under 5 min' WHEN 2 THEN '5–10 min' WHEN 3 THEN '10–20 min'
+                   WHEN 4 THEN '20–30 min' WHEN 5 THEN '30–60 min' ELSE '1 h or more' END AS duration,
+       ROUND(100.0 * COUNT(*) FILTER (WHERE member_type = 'member') / SUM(COUNT(*) FILTER (WHERE member_type = 'member')) OVER (), 1) AS pct_members,
+       ROUND(100.0 * COUNT(*) FILTER (WHERE member_type = 'casual') / SUM(COUNT(*) FILTER (WHERE member_type = 'casual')) OVER (), 1) AS pct_casual
+FROM b GROUP BY bucket;

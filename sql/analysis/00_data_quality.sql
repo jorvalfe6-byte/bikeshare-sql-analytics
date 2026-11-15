@@ -34,6 +34,11 @@ WITH checks AS (
     UNION ALL
     SELECT 'excluded: over 24 h',              (SELECT COUNT(*) FROM mart.fact_trip WHERE invalid_reason = 'over_24h'), 5011
     UNION ALL
+    -- GPS glitches: both coordinates present but outside the D.C. metro box (no distance)
+    SELECT 'trips with coordinates outside the metro box',
+           (SELECT COUNT(*) FROM mart.fact_trip AS m JOIN core.trip AS t USING (ride_id)
+            WHERE m.distance_km IS NULL AND t.start_lat IS NOT NULL AND t.end_lat IS NOT NULL), 51
+    UNION ALL
     -- a classic bike can only be unlocked at a dock; if this is not 0, a column shifted
     SELECT 'classic bikes without a start station', (SELECT COUNT(*) FROM core.trip WHERE rideable_type = 'classic_bike' AND start_station_id IS NULL), 0
     UNION ALL
@@ -52,7 +57,8 @@ FROM checks;
 --     not returned to a dock. They are kept, and they count as undocked.
 --   * 15 station ids were renamed during the year, and 2 names exist under
 --     two ids. Each id keeps its most frequent name; both ids stay.
---   * A handful of end coordinates fall outside the metro area (GPS noise).
+--   * 51 trips have coordinates outside the metro area (GPS noise): they
+--     are kept, but get no distance.
 --   * The April 2024 archive contains a file named "202004-…" (typo by the
 --     publisher); its trips are April 2024. The download script names the
 --     file after the month in the zip's own name.

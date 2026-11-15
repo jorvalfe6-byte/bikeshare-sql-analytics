@@ -18,6 +18,7 @@
     --series-1:  #00918b;
     --series-2:  #b8632c;
     --wash-1:    rgba(0,145,139,.10);
+    --seq-0:#e6f3f1; --seq-1:#bfe2de; --seq-2:#8ccbc5; --seq-3:#4faea7; --seq-4:#12908a; --seq-5:#0b6b66;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -31,6 +32,7 @@
       --series-1:  #16a39a;
       --series-2:  #cc7a40;
       --wash-1:    rgba(22,163,154,.12);
+      --seq-0:#22302f; --seq-1:#1f4744; --seq-2:#1d625d; --seq-3:#1a7f78; --seq-4:#22a59c; --seq-5:#6fd0c8;
     }
   }
 
@@ -67,6 +69,7 @@
        font-size: 26px; margin: 0 0 4px; }
   .block > .wrap > p.sub { color: var(--text-2); margin: 0 0 20px; max-width: 70ch; }
 
+  .colstack { grid-column: span 12; display: grid; gap: 16px; align-content: start; min-width: 0; }
   .grid { display: grid; gap: 16px; grid-template-columns: repeat(12, 1fr); }
   .card { grid-column: span 12; background: var(--surface-1); border: 1px solid var(--line);
           border-radius: 10px; padding: 20px 20px 14px; min-width: 0; }
@@ -205,12 +208,34 @@
           <footer><span></span>
             <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/03_hourly_pattern.sql">SQL ↗</a></footer>
         </article>
+        <article class="card span-7">
+          <h3 id="h-heat"></h3>
+          <p class="desc">Average trips for each hour of the week. Darker is busier.</p>
+          <div class="chart" id="c-heat"></div>
+          <footer><details><summary>View table</summary><div class="tbl" id="tb-heat"></div></details>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/10_weekday_hour_heatmap.sql">SQL ↗</a></footer>
+        </article>
+        <article class="card span-5">
+          <h3 id="h-duration"></h3>
+          <p class="desc">Share of each rider type's trips by duration.</p>
+          <div class="legend" id="lg-duration"></div>
+          <div class="chart" id="c-duration"></div>
+          <footer><details><summary>View table</summary><div class="tbl" id="tb-duration"></div></details>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/12_duration_distribution.sql">SQL ↗</a></footer>
+        </article>
         <article class="card">
           <h3 id="h-riders"></h3>
           <p class="desc">Valid trips only. "Commute hours" are weekdays 7–9 h and 16–18 h; a round trip ends at the dock it started from.</p>
           <div class="cmp" id="cmp"></div>
           <footer><span></span>
             <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/04_members_vs_casual.sql">SQL ↗</a></footer>
+        </article>
+        <article class="card">
+          <h3 id="h-speed"></h3>
+          <p class="desc">One-way trips of at least 100 m and 2 minutes. Distance is straight-line between start and end, so speed is a lower bound.</p>
+          <div class="cmp" id="cmp-speed"></div>
+          <footer><span></span>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/11_distance_speed.sql">SQL ↗</a></footer>
         </article>
       </div>
     </div>
@@ -221,19 +246,43 @@
       <h2>Stations and the street</h2>
       <p class="sub" id="sub-stations"></p>
       <div class="grid">
-        <article class="card span-7">
+        <article class="card span-6">
+          <h3 id="h-map"></h3>
+          <p class="desc" id="d-map"></p>
+          <div class="legend" id="lg-map"></div>
+          <div class="chart" id="c-map"></div>
+          <footer><span id="n-map"></span>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/07_rebalancing.sql">SQL ↗</a></footer>
+        </article>
+        <div class="colstack span-6">
+          <article class="card">
+            <h3>Demand is concentrated</h3>
+            <p class="desc" id="d-conc"></p>
+            <div class="stat3" id="s-conc"></div>
+            <footer><span></span>
+              <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/06_station_ranking.sql">SQL ↗</a></footer>
+          </article>
+          <article class="card">
+            <h3>The ten busiest one-way routes</h3>
+            <p class="desc">Origin → destination, valid docked trips.</p>
+            <div class="tbl wrapcells" id="tb-routes" style="max-height:none"></div>
+            <footer><span></span>
+              <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/08_routes.sql">SQL ↗</a></footer>
+          </article>
+        </div>
+        <article class="card span-6">
           <h3 id="h-stations"></h3>
           <p class="desc">Top 15 stations by departures.</p>
           <div class="chart" id="c-stations"></div>
           <footer><details><summary>View table</summary><div class="tbl" id="tb-stations"></div></details>
             <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/06_station_ranking.sql">SQL ↗</a></footer>
         </article>
-        <article class="card span-5">
-          <h3>Demand is concentrated</h3>
-          <p class="desc" id="d-conc"></p>
-          <div class="stat3" id="s-conc"></div>
-          <footer><span></span>
-            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/06_station_ranking.sql">SQL ↗</a></footer>
+        <article class="card span-6">
+          <h3 id="h-leisure"></h3>
+          <p class="desc">Stations where most trips end at the same dock they started from.</p>
+          <div class="chart" id="c-leisure"></div>
+          <footer><details><summary>View table</summary><div class="tbl" id="tb-leisure"></div></details>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/08_routes.sql">SQL ↗</a></footer>
         </article>
         <article class="card span-6">
           <h3 id="h-fills"></h3>
@@ -249,20 +298,6 @@
           <footer><span></span>
             <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/07_rebalancing.sql">SQL ↗</a></footer>
         </article>
-        <article class="card span-6">
-          <h3 id="h-leisure"></h3>
-          <p class="desc">Stations where most trips end at the same dock they started from.</p>
-          <div class="chart" id="c-leisure"></div>
-          <footer><details><summary>View table</summary><div class="tbl" id="tb-leisure"></div></details>
-            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/08_routes.sql">SQL ↗</a></footer>
-        </article>
-        <article class="card span-6">
-          <h3>The ten busiest one-way routes</h3>
-          <p class="desc">Origin → destination, valid docked trips.</p>
-          <div class="tbl wrapcells" id="tb-routes" style="max-height:none"></div>
-          <footer><span></span>
-            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/08_routes.sql">SQL ↗</a></footer>
-        </article>
       </div>
     </div>
   </section>
@@ -274,10 +309,10 @@
       <ol>
         <li><b>Staging</b>The 12 monthly CSV files load as plain text with <code>\copy</code>, so a odd value never stops the load.</li>
         <li><b>Core</b>Typed model with primary keys, foreign keys and <code>CHECK</code>s. 141 trips that cross midnight at a month end come in two files; one copy is kept and the count is logged.</li>
-        <li><b>Checks</b>13 checks compare counts with the published files. The load fails if any says <code>REVIEW</code>.</li>
+        <li><b>Checks</b>14 checks compare counts with the published files. The load fails if any says <code>REVIEW</code>.</li>
         <li><b>Mart</b>A materialized view of every trip with its validity. Excluded trips keep the reason: nothing is dropped silently.</li>
-        <li><b>Analysis</b>Window functions, percentiles, ranking, calendar tables and a rebalancing model over six million rows.</li>
-        <li><b>Publication</b>Only aggregates leave the database, as one small JSON that this page draws without external libraries.</li>
+        <li><b>Analysis</b>Window functions, percentiles, ranking, calendar tables, haversine distances and a rebalancing model over six million rows.</li>
+        <li><b>Publication</b>Only aggregates and station locations leave the database, as one JSON of about 115 KB that this page draws without external libraries.</li>
       </ol>
     </div>
   </section>
@@ -285,7 +320,7 @@
 
 <footer class="end">
   <div class="wrap">
-    <p>Data: <a href="https://capitalbikeshare.com/system-data">Capital Bikeshare system data</a>, used under the <a href="https://capitalbikeshare.com/data-license-agreement">Capital Bikeshare Data License Agreement</a>. This page publishes aggregates only.</p>
+    <p>Data: <a href="https://capitalbikeshare.com/system-data">Capital Bikeshare system data</a>, used under the <a href="https://capitalbikeshare.com/data-license-agreement">Capital Bikeshare Data License Agreement</a>. This page publishes aggregates and station locations only.</p>
     <p>Times are local to Washington D.C. (the source has no time zone). A valid trip is physically plausible: it ends after it starts, lasts at most 24 h and is not a sub-minute return to the same dock. <span id="excluded"></span> <span id="gen"></span></p>
   </div>
 </footer>
@@ -472,6 +507,54 @@ function barsH(el, rows, opt) {
   });
 }
 
+// ---------- week x hour heatmap ----------
+const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], DAYS_FULL = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+function weekHeat(el, rows) {
+  const W = el.clientWidth || 640, m = { t: 18, r: 2, b: 26, l: 38 };
+  const cw = (W - m.l - m.r) / 24, ch = Math.max(20, Math.min(30, cw * .85));
+  const H = m.t + 7 * ch + m.b;
+  const svg = svgRoot(el, W, H, "Average trips by weekday and hour of the day");
+  const max = Math.max(...rows.map(r => r.trips_per_day));
+  const steps = [0, 1, 2, 3, 4, 5].map(k => css("--seq-" + k));
+  const stepOf = v => Math.min(5, Math.floor((v / max) * 5.999));
+  DAYS.forEach((d, i) => txt(svg, m.l - 8, m.t + i * ch + ch / 2 + 4, d, { "text-anchor": "end" }));
+  for (let hr = 0; hr < 24; hr += (W < 520 ? 6 : 3)) txt(svg, m.l + hr * cw + cw / 2, 12, hr + "h", { "text-anchor": "middle", fill: css("--text-3") });
+  rows.forEach(r => {
+    const x = m.l + r.hour * cw, y = m.t + (r.dow - 1) * ch;
+    const mark = s("rect", { x: x + 1, y: y + 1, width: cw - 2, height: ch - 2, rx: 2, fill: steps[stepOf(r.trips_per_day)], class: "mark" }, svg);
+    const hit = s("rect", { x, y, width: cw, height: ch, class: "hit" }, svg);
+    svg.insertBefore(hit, mark);
+    bindHover(hit, mark, el, ev => showTip(ev, DAYS_FULL[r.dow - 1] + ", " + hourTxt(r.hour), [{ color: steps[Math.max(2, stepOf(r.trips_per_day))], value: nf0.format(r.trips_per_day), name: "trips on average" }]));
+  });
+  const ly = H - 10;
+  txt(svg, m.l, ly + 4, "fewer", { fill: css("--text-3") });
+  steps.forEach((c, k) => s("rect", { x: m.l + 36 + k * 24, y: ly - 4, width: 22, height: 8, rx: 2, fill: c }, svg));
+  txt(svg, m.l + 36 + 6 * 24 + 4, ly + 4, "more", { fill: css("--text-3") });
+}
+
+// ---------- station map (lat/lng projected, no tiles, no external service) ----------
+const MAP_BOX = { lat0: 38.79, lat1: 39.00, lng0: -77.13, lng1: -76.90 };   // D.C. and the inner suburbs
+function stationMap(el, rows, S1, S2) {
+  const W = el.clientWidth || 540, pad = 10, B = MAP_BOX;
+  const k = Math.cos(((B.lat0 + B.lat1) / 2) * Math.PI / 180);
+  const iw = W - 2 * pad, ih = iw * ((B.lat1 - B.lat0) / ((B.lng1 - B.lng0) * k)), H = ih + 2 * pad;
+  const svg = svgRoot(el, W, H, "Map of stations: size is departures, color is the weekday-morning net flow");
+  const X = lng => pad + iw * (lng - B.lng0) / (B.lng1 - B.lng0), Y = lat => pad + ih * (1 - (lat - B.lat0) / (B.lat1 - B.lat0));
+  s("rect", { x: pad, y: pad, width: iw, height: ih, rx: 6, fill: "none", stroke: css("--line") }, svg);
+  const inside = rows.filter(r => r.lat >= B.lat0 && r.lat <= B.lat1 && r.lng >= B.lng0 && r.lng <= B.lng1);
+  const maxDep = Math.max(...inside.map(r => r.departures)), rmax = W < 520 ? 8 : 12;
+  [...inside].sort((a, b) => b.departures - a.departures).forEach(r => {
+    const c = s("circle", { cx: X(r.lng), cy: Y(r.lat), r: 1.8 + rmax * Math.sqrt(r.departures / maxDep),
+      fill: r.net_morning >= 0 ? S1 : S2, "fill-opacity": .55, stroke: r.net_morning >= 0 ? S1 : S2, "stroke-width": 1, class: "mark" }, svg);
+    const on = ev => { c.setAttribute("fill-opacity", .95); showTip(ev, r.station, [
+      { value: nf0.format(r.departures), name: "departures in the year" },
+      { color: r.net_morning >= 0 ? S1 : S2, value: (r.net_morning > 0 ? "+" : "") + nf0.format(r.net_morning), name: "weekday-morning net flow" }]); };
+    c.addEventListener("pointermove", on);
+    c.addEventListener("pointerleave", () => { c.setAttribute("fill-opacity", .55); hideTip(); });
+  });
+  return { shown: inside.length, hidden: rows.length - inside.length };
+}
+
 // ---------- assembly ----------
 function render(D) {
   const k = D.kpis, S1 = css("--series-1"), S2 = css("--series-2");
@@ -548,6 +631,31 @@ function render(D) {
    ["Trips on electric bikes", r => pct(r.pct_electric)], ["Round trips", r => pct(r.pct_round_trip)]
   ].forEach(([label, f]) => { cmp.appendChild(h("div", "k", label)); cmp.appendChild(h("div", "v m", f(rm))); cmp.appendChild(h("div", "v c", f(rc))); });
 
+  // week heatmap
+  const heatMax = D.heat.reduce((a, b) => b.trips_per_day > a.trips_per_day ? b : a);
+  document.getElementById("h-heat").textContent = "The busiest hour of the week is " + DAYS_FULL[heatMax.dow - 1] + " at " + hourTxt(heatMax.hour) + ", with " + nf0.format(heatMax.trips_per_day) + " trips";
+  weekHeat(document.getElementById("c-heat"), D.heat);
+  table(document.getElementById("tb-heat"), [{ t: "Day", f: r => DAYS_FULL[r.dow - 1] }, { t: "Hour", f: r => r.hour + ":00" }, { t: "Trips on average", n: 1, f: r => nf0.format(r.trips_per_day) }], D.heat);
+
+  // duration distribution
+  const dr = D.duration;
+  document.getElementById("h-duration").textContent = "Most trips are under 20 minutes, but " + nf1.format(dr[4].pct_casual + dr[5].pct_casual) + " % of casual trips run past half an hour";
+  legend(document.getElementById("lg-duration"), [{ type: "rect", color: S1, name: "Members" }, { type: "rect", color: S2, name: "Casual riders" }]);
+  barsH(document.getElementById("c-duration"), dr, {
+    label: "Share of trips by duration, members and casual riders", labelW: 84, barH: 10, bandPad: 10, labelOf: r => r.duration, max: 40,
+    series: [{ key: "pct_members", name: "members", color: S1, fmt: pct }, { key: "pct_casual", name: "casual riders", color: S2, fmt: pct }],
+    tipRows: r => [{ color: S1, value: pct(r.pct_members), name: "of member trips" }, { color: S2, value: pct(r.pct_casual), name: "of casual trips" }]
+  });
+  table(document.getElementById("tb-duration"), [{ t: "Duration", f: r => r.duration }, { t: "% members", n: 1, f: r => pct(r.pct_members) }, { t: "% casual", n: 1, f: r => pct(r.pct_casual) }], dr);
+
+  // distance and speed
+  const sc_ = D.speed.find(r => r.rideable_type === "classic_bike"), se = D.speed.find(r => r.rideable_type === "electric_bike");
+  document.getElementById("h-speed").textContent = "Electric bikes are " + Math.round(100 * (se.median_kmh / sc_.median_kmh - 1)) + " % faster and go " + Math.round(100 * (se.median_km / sc_.median_km - 1)) + " % farther";
+  const cs = document.getElementById("cmp-speed"); cs.textContent = "";
+  cs.appendChild(h("div", "hd", "")); cs.appendChild(h("div", "hd", "Classic")); cs.appendChild(h("div", "hd", "Electric"));
+  [["Median distance", r => nf1.format(r.median_km).replace(/\.0$/, "") + " km"], ["Median net speed", r => nf1.format(r.median_kmh) + " km/h"], ["Trips in the sample", r => nf0.format(r.trips)]]
+    .forEach(([label, f]) => { cs.appendChild(h("div", "k", label)); cs.appendChild(h("div", "v m", f(sc_))); cs.appendChild(h("div", "v c", f(se))); });
+
   // stations
   const topS = D.stations[0], cc = D.concentration;
   document.getElementById("sub-stations").textContent =
@@ -565,6 +673,13 @@ function render(D) {
   const sc = document.getElementById("s-conc"); sc.textContent = "";
   [[cc.pct_top1, "top 1 % of stations"], [cc.pct_top10, "top 10 %"], [cc.pct_top20, "top 20 %"]].forEach(([a, b]) => {
     const d = h("div"); d.appendChild(h("b", null, pct(a))); d.appendChild(h("span", null, "of trips start at the " + b)); sc.appendChild(d); });
+
+  // station map
+  const mapInfo = stationMap(document.getElementById("c-map"), D.map, S1, S2);
+  document.getElementById("h-map").textContent = "Where docks fill up and where they run dry on weekday mornings";
+  document.getElementById("d-map").textContent = "Each circle is a station. Size is departures over the year; color is the net flow from 7 to 9 am on weekdays.";
+  legend(document.getElementById("lg-map"), [{ type: "rect", color: S1, name: "Fills up (more arrivals)" }, { type: "rect", color: S2, name: "Runs low (more departures)" }]);
+  document.getElementById("n-map").textContent = nf0.format(mapInfo.shown) + " stations shown" + (mapInfo.hidden ? "; " + nf0.format(mapInfo.hidden) + " in the outer suburbs are off the map" : "");
 
   // rebalancing
   const rb = (period, behavior) => D.rebalance.filter(r => r.period === period && r.behavior === behavior).map(r => ({ ...r, flow: Math.abs(r.net_flow) }))

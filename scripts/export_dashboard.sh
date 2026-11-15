@@ -19,7 +19,11 @@ SELECT json_build_object(
     'concentration', (SELECT row_to_json(c) FROM mart.dash_concentration c),
     'rebalance',     (SELECT json_agg(b ORDER BY period DESC, behavior, abs(net_flow) DESC) FROM mart.dash_rebalance b),
     'leisure',       (SELECT json_agg(l ORDER BY rank)                          FROM mart.dash_leisure l),
-    'routes',        (SELECT json_agg(r ORDER BY rank)                          FROM mart.dash_routes r)
+    'routes',        (SELECT json_agg(r ORDER BY rank)                          FROM mart.dash_routes r),
+    'heat',          (SELECT json_agg(h ORDER BY dow, hour)                     FROM mart.dash_heat h),
+    'map',           (SELECT json_agg(m ORDER BY departures DESC, station)      FROM mart.dash_map m),
+    'speed',         (SELECT json_agg(s ORDER BY rideable_type)                 FROM mart.dash_speed s),
+    'duration',      (SELECT json_agg(d ORDER BY bucket)                        FROM mart.dash_duration d)
 );
 SQL
 
