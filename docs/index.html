@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capital Bikeshare · SQL analytics — Jorge Valencia</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%231d1e20%22/%3E%3Cpath d=%22M8 22h4V14H8zm6 0h4V8h-4zm6 0h4V17h-4z%22 fill=%22%2300918b%22/%3E%3C/svg%3E">
+<meta name="description" content="Data analytics demo: 6 million bike-share trips from Washington D.C., modelled in PostgreSQL and analysed with SQL.">
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0: #f3f0e8;
+    --surface-1: #faf8f3;
+    --line:      #e2ddd1;
+    --text-1:    #1d1e20;
+    --text-2:    #55524c;
+    --text-3:    #858077;
+    --series-1:  #00918b;
+    --series-2:  #b8632c;
+    --wash-1:    rgba(0,145,139,.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --surface-0: #141516;
+      --surface-1: #1b1c1e;
+      --line:      #2e3033;
+      --text-1:    #f1eee6;
+      --text-2:    #bdb8ad;
+      --text-3:    #8b877e;
+      --series-1:  #16a39a;
+      --series-2:  #cc7a40;
+      --wash-1:    rgba(22,163,154,.12);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--surface-0); color: var(--text-1);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  a { color: inherit; text-decoration-color: var(--series-1); text-underline-offset: 3px; }
+
+  header.top { padding: 56px 0 28px; border-bottom: 1px solid var(--line); }
+  .eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); margin: 0 0 14px; }
+  h1 {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-weight: 500; font-size: clamp(30px, 5vw, 50px); line-height: 1.08; letter-spacing: -.01em;
+    margin: 0 0 16px; max-width: 24ch;
+  }
+  h1 em { font-style: italic; color: var(--series-1); }
+  .lede { max-width: 62ch; color: var(--text-2); font-size: 17px; margin: 0 0 22px; }
+  .byline { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: var(--text-3); }
+  .byline strong { color: var(--text-1); font-weight: 600; }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px;
+          background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin: 32px 0 8px; }
+  .kpi { background: var(--surface-1); padding: 16px 18px; }
+  .kpi span { display: block; font-size: 12px; color: var(--text-3); }
+  .kpi b { display: block; font-size: 26px; font-weight: 600; letter-spacing: -.01em; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .kpi small { color: var(--text-2); font-size: 12px; }
+
+  section.block { padding: 44px 0 8px; }
+  h2 { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; font-weight: 500;
+       font-size: 26px; margin: 0 0 4px; }
+  .block > .wrap > p.sub { color: var(--text-2); margin: 0 0 20px; max-width: 70ch; }
+
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(12, 1fr); }
+  .card { grid-column: span 12; background: var(--surface-1); border: 1px solid var(--line);
+          border-radius: 10px; padding: 20px 20px 14px; min-width: 0; }
+  @media (min-width: 860px) { .span-6 { grid-column: span 6; } .span-7 { grid-column: span 7; } .span-5 { grid-column: span 5; } }
+  .card h3 { font-size: 16px; font-weight: 600; margin: 0 0 2px; line-height: 1.35; }
+  .card .desc { font-size: 13px; color: var(--text-2); margin: 0 0 12px; }
+  .chart { position: relative; width: 100%; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--text-2); margin: 0 0 8px; }
+  .legend i { display: inline-block; vertical-align: middle; margin-right: 6px; }
+  .legend i.rect { width: 10px; height: 10px; border-radius: 2px; }
+  .legend i.ln { width: 16px; height: 2px; border-radius: 1px; }
+  .legend i.ln.dash { background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px) !important; }
+
+  .card footer { display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+                 border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; font-size: 12px; color: var(--text-3); }
+  details summary { cursor: pointer; color: var(--text-2); }
+  details[open] summary { margin-bottom: 8px; }
+  .tbl { max-height: 300px; overflow: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  th { color: var(--text-3); font-weight: 500; position: sticky; top: 0; background: var(--surface-1); }
+  td.n, th.n { text-align: right; }
+  .wrapcells td { white-space: normal; }
+  .wrapcells td.n, .wrapcells th.n { white-space: nowrap; }
+
+  svg text { fill: var(--text-2); font-size: 11px; }
+  svg .axis text { fill: var(--text-3); }
+  svg .grid line { stroke: var(--line); stroke-width: 1; shape-rendering: crispEdges; }
+  svg .lbl { fill: var(--text-1); font-weight: 600; }
+  svg .val { paint-order: stroke; stroke: var(--surface-1); stroke-width: 3px; stroke-linejoin: round; }
+  .hit { fill: transparent; cursor: default; }
+  .mark { transition: opacity .12s; }
+  .chart.hovering .mark:not(.on) { opacity: .45; }
+  .hit:focus { outline: none; }
+  .hit:focus-visible + .mark, .mark.on { opacity: 1; }
+
+  #tip { position: fixed; pointer-events: none; z-index: 10; min-width: 120px; max-width: 280px;
+         background: var(--surface-1); color: var(--text-1); border: 1px solid var(--line);
+         box-shadow: 0 6px 24px rgba(0,0,0,.12); border-radius: 8px; padding: 8px 10px; font-size: 12px;
+         opacity: 0; transform: translateY(4px); transition: opacity .1s, transform .1s; }
+  #tip.show { opacity: 1; transform: none; }
+  #tip .t { color: var(--text-3); margin-bottom: 4px; }
+  #tip .r { display: flex; align-items: center; gap: 8px; }
+  #tip .r b { font-size: 14px; font-variant-numeric: tabular-nums; }
+  #tip .r i { width: 12px; height: 2px; border-radius: 1px; flex: none; }
+  #tip .r span { color: var(--text-2); }
+
+  .stat3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 6px 0 4px; }
+  .stat3 div { border-left: 2px solid var(--series-1); padding: 2px 0 2px 10px; }
+  .stat3 b { display: block; font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat3 span { font-size: 12px; color: var(--text-2); }
+
+  .cmp { display: grid; grid-template-columns: 1.4fr 1fr 1fr; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .cmp > * { padding: 8px 6px; border-bottom: 1px solid var(--line); }
+  .cmp .hd { color: var(--text-3); font-size: 12px; font-weight: 500; text-align: right; }
+  .cmp .hd:first-child { text-align: left; }
+  .cmp .k { color: var(--text-2); }
+  .cmp .v { text-align: right; font-weight: 600; }
+  .cmp .v.m { color: var(--series-1); }
+  .cmp .v.c { color: var(--series-2); }
+
+  .how ol { counter-reset: s; list-style: none; padding: 0; margin: 0; display: grid; gap: 1px;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); background: var(--line);
+            border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .how li { background: var(--surface-1); padding: 16px 18px; font-size: 13px; color: var(--text-2); }
+  .how li::before { counter-increment: s; content: "0" counter(s); display: block; color: var(--series-1);
+                    font: 600 12px/1 ui-monospace, Menlo, monospace; margin-bottom: 8px; }
+  .how li b { display: block; color: var(--text-1); font-size: 14px; margin-bottom: 2px; }
+  code { font: 12px ui-monospace, Menlo, Consolas, monospace; background: var(--wash-1); padding: 1px 5px; border-radius: 4px; }
+
+  footer.end { margin: 56px 0 0; padding: 22px 0 40px; border-top: 1px solid var(--line); font-size: 12px; color: var(--text-3); }
+  footer.end p { margin: 0 0 6px; max-width: 80ch; }
+  .err { padding: 40px 0; color: var(--text-2); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Data analytics demo · PostgreSQL + SQL</p>
+    <h1>What <em>6 million bike trips</em> say about a city</h1>
+    <p class="lede">I took a year of public trip data from Capital Bikeshare, Washington D.C.'s bike-share system, modelled it in PostgreSQL and asked the questions an operator would ask: when does demand peak, who rides, which stations run out of bikes, and how fast are electric bikes taking over.</p>
+    <div class="byline">
+      <span><strong>Jorge Valencia</strong> · data analysis and automation</span>
+      <span id="period"></span>
+      <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics">Code and queries on GitHub</a>
+    </div>
+    <div class="kpis" id="kpis" aria-label="Key figures"></div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="block">
+    <div class="wrap">
+      <h2>Demand</h2>
+      <p class="sub" id="sub-demand"></p>
+      <div class="grid">
+        <article class="card span-7">
+          <h3 id="h-monthly"></h3>
+          <p class="desc">Valid trips per month, with a 3-month moving average.</p>
+          <div class="legend" id="lg-monthly"></div>
+          <div class="chart" id="c-monthly"></div>
+          <footer><details><summary>View table</summary><div class="tbl" id="tb-monthly"></div></details>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/02_monthly_usage.sql">SQL ↗</a></footer>
+        </article>
+        <article class="card span-5">
+          <h3 id="h-electric"></h3>
+          <p class="desc">Share of each month's trips made on an electric bike.</p>
+          <div class="chart" id="c-electric"></div>
+          <footer><details><summary>View table</summary><div class="tbl" id="tb-electric"></div></details>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/05_electric_adoption.sql">SQL ↗</a></footer>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2>Who rides, and when</h2>
+      <p class="sub">Members (subscribers) and casual riders (day passes and single rides) use the same bikes for different things.</p>
+      <div class="grid">
+        <article class="card span-6">
+          <h3 id="h-weekday"></h3>
+          <p class="desc">Average trips per weekday, by the hour the trip starts.</p>
+          <div class="legend" id="lg-hourly"></div>
+          <div class="chart" id="c-weekday"></div>
+          <footer><details><summary>View table</summary><div class="tbl" id="tb-hourly"></div></details>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/03_hourly_pattern.sql">SQL ↗</a></footer>
+        </article>
+        <article class="card span-6">
+          <h3 id="h-weekend"></h3>
+          <p class="desc">Average trips per weekend day, by the hour the trip starts.</p>
+          <div class="legend" id="lg-hourly2"></div>
+          <div class="chart" id="c-weekend"></div>
+          <footer><span></span>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/03_hourly_pattern.sql">SQL ↗</a></footer>
+        </article>
+        <article class="card">
+          <h3 id="h-riders"></h3>
+          <p class="desc">Valid trips only. "Commute hours" are weekdays 7–9 h and 16–18 h; a round trip ends at the dock it started from.</p>
+          <div class="cmp" id="cmp"></div>
+          <footer><span></span>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/04_members_vs_casual.sql">SQL ↗</a></footer>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2>Stations and the street</h2>
+      <p class="sub" id="sub-stations"></p>
+      <div class="grid">
+        <article class="card span-7">
+          <h3 id="h-stations"></h3>
+          <p class="desc">Top 15 stations by departures.</p>
+          <div class="chart" id="c-stations"></div>
+          <footer><details><summary>View table</summary><div class="tbl" id="tb-stations"></div></details>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/06_station_ranking.sql">SQL ↗</a></footer>
+        </article>
+        <article class="card span-5">
+          <h3>Demand is concentrated</h3>
+          <p class="desc" id="d-conc"></p>
+          <div class="stat3" id="s-conc"></div>
+          <footer><span></span>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/06_station_ranking.sql">SQL ↗</a></footer>
+        </article>
+        <article class="card span-6">
+          <h3 id="h-fills"></h3>
+          <p class="desc">Weekday mornings, 7–9 h. Arrivals minus departures: these docks end up full.</p>
+          <div class="chart" id="c-fills"></div>
+          <footer><details><summary>View table (morning and evening)</summary><div class="tbl" id="tb-rebalance"></div></details>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/07_rebalancing.sql">SQL ↗</a></footer>
+        </article>
+        <article class="card span-6">
+          <h3 id="h-drains"></h3>
+          <p class="desc">Weekday mornings, 7–9 h. Departures minus arrivals: these docks end up empty.</p>
+          <div class="chart" id="c-drains"></div>
+          <footer><span></span>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/07_rebalancing.sql">SQL ↗</a></footer>
+        </article>
+        <article class="card span-6">
+          <h3 id="h-leisure"></h3>
+          <p class="desc">Stations where most trips end at the same dock they started from.</p>
+          <div class="chart" id="c-leisure"></div>
+          <footer><details><summary>View table</summary><div class="tbl" id="tb-leisure"></div></details>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/08_routes.sql">SQL ↗</a></footer>
+        </article>
+        <article class="card span-6">
+          <h3>The ten busiest one-way routes</h3>
+          <p class="desc">Origin → destination, valid docked trips.</p>
+          <div class="tbl wrapcells" id="tb-routes" style="max-height:none"></div>
+          <footer><span></span>
+            <a href="https://github.com/jorvalfe6-byte/bikeshare-sql-analytics/blob/main/sql/analysis/08_routes.sql">SQL ↗</a></footer>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="block how">
+    <div class="wrap">
+      <h2>How it's built</h2>
+      <p class="sub">The whole process rebuilds from scratch with one command (<code>./scripts/load.sh</code>).</p>
+      <ol>
+        <li><b>Staging</b>The 12 monthly CSV files load as plain text with <code>\copy</code>, so a odd value never stops the load.</li>
+        <li><b>Core</b>Typed model with primary keys, foreign keys and <code>CHECK</code>s. 141 trips that cross midnight at a month end come in two files; one copy is kept and the count is logged.</li>
+        <li><b>Checks</b>13 checks compare counts with the published files. The load fails if any says <code>REVIEW</code>.</li>
+        <li><b>Mart</b>A materialized view of every trip with its validity. Excluded trips keep the reason: nothing is dropped silently.</li>
+        <li><b>Analysis</b>Window functions, percentiles, ranking, calendar tables and a rebalancing model over six million rows.</li>
+        <li><b>Publication</b>Only aggregates leave the database, as one small JSON that this page draws without external libraries.</li>
+      </ol>
+    </div>
+  </section>
+</main>
+
+<footer class="end">
+  <div class="wrap">
+    <p>Data: <a href="https://capitalbikeshare.com/system-data">Capital Bikeshare system data</a>, used under the <a href="https://capitalbikeshare.com/data-license-agreement">Capital Bikeshare Data License Agreement</a>. This page publishes aggregates only.</p>
+    <p>Times are local to Washington D.C. (the source has no time zone). A valid trip is physically plausible: it ends after it starts, lasts at most 24 h and is not a sub-minute return to the same dock. <span id="excluded"></span> <span id="gen"></span></p>
+  </div>
+</footer>
+
+<div id="tip" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+// ---------- formatting ----------
+const nf0 = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const pct = v => nf1.format(v) + " %";
+const compact = v => v >= 1e6 ? nf1.format(v / 1e6) + " M" : v >= 1e3 ? nf0.format(v / 1e3) + " K" : nf0.format(v);
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const monthTxt = s => { const [y, m] = s.split("-"); return MONTHS[+m - 1] + " " + y; };
+const monthShort = s => MONTHS[+s.split("-")[1] - 1];
+const hourTxt = h => (h % 12 === 0 ? 12 : h % 12) + (h < 12 ? " am" : " pm");
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fit = (str, px) => { const n = Math.max(6, Math.floor(px / 6.1)); return str.length > n ? str.slice(0, n - 1) + "…" : str; };
+
+// ---------- DOM helpers (text always goes in through textContent) ----------
+const NS = "http://www.w3.org/2000/svg";
+function s(tag, attrs = {}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function txt(parent, x, y, str, attrs = {}) {
+  const { fill, ...rest } = attrs;
+  const t = s("text", { x, y, ...rest }, parent);
+  if (fill) t.style.fill = fill;
+  t.textContent = str; return t;
+}
+function h(tag, cls, str) { const e = document.createElement(tag); if (cls) e.className = cls; if (str != null) e.textContent = str; return e; }
+function svgRoot(el, w, hgt, label) {
+  el.textContent = "";
+  return s("svg", { viewBox: `0 0 ${w} ${hgt}`, role: "img", "aria-label": label }, el);
+}
+function barPath(x, y, w, hgt, r = 4) {
+  r = Math.min(r, w, hgt / 2);
+  if (w <= 0) return "";
+  return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + hgt - r}Q${x + w},${y + hgt} ${x + w - r},${y + hgt}H${x}Z`;
+}
+function niceMax(v) { const p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p;
+  return ([1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(x => n <= x)) * p; }
+
+// ---------- tooltip ----------
+const tip = document.getElementById("tip");
+function showTip(ev, title, rows) {
+  tip.textContent = "";
+  tip.appendChild(h("div", "t", title));
+  for (const r of rows) {
+    const row = h("div", "r");
+    if (r.color) { const i = h("i"); i.style.background = r.color; row.appendChild(i); }
+    row.appendChild(h("b", null, r.value));
+    if (r.name) row.appendChild(h("span", null, r.name));
+    tip.appendChild(row);
+  }
+  let x, y;
+  if (ev.clientX != null && ev.type !== "focus") { x = ev.clientX; y = ev.clientY; }
+  else { const b = ev.target.getBoundingClientRect(); x = b.left + b.width / 2; y = b.top; }
+  tip.classList.add("show");
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = x + 14, top = y - th - 10;
+  if (left + tw > innerWidth - 8) left = x - tw - 14;
+  if (top < 8) top = y + 16;
+  tip.style.left = Math.max(8, left) + "px"; tip.style.top = top + "px";
+}
+function hideTip() { tip.classList.remove("show"); }
+function bindHover(hit, mark, chartEl, fn) {
+  hit.setAttribute("tabindex", "0");
+  const on = ev => { chartEl.classList.add("hovering"); mark.classList.add("on"); fn(ev); };
+  const off = () => { chartEl.classList.remove("hovering"); mark.classList.remove("on"); hideTip(); };
+  hit.addEventListener("pointermove", on); hit.addEventListener("focus", on);
+  hit.addEventListener("pointerleave", off); hit.addEventListener("blur", off);
+}
+
+// ---------- accessible table ----------
+function table(el, cols, rows) {
+  const t = h("table"), thead = h("thead"), tr = h("tr");
+  cols.forEach(c => { const th = h("th", c.n ? "n" : null, c.t); th.scope = "col"; tr.appendChild(th); });
+  thead.appendChild(tr); t.appendChild(thead);
+  const tb = h("tbody");
+  rows.forEach(r => { const row = h("tr"); cols.forEach(c => row.appendChild(h("td", c.n ? "n" : null, c.f(r)))); tb.appendChild(row); });
+  t.appendChild(tb); el.textContent = ""; el.appendChild(t);
+}
+function legend(el, items) {
+  el.textContent = "";
+  for (const it of items) {
+    const sp = h("span"), i = h("i", it.type + (it.dash ? " dash" : ""));
+    i.style.background = it.color; i.style.color = it.color;
+    sp.appendChild(i); sp.appendChild(document.createTextNode(it.name)); el.appendChild(sp);
+  }
+}
+
+// ---------- line chart with crosshair ----------
+// opt: label, fmtY, fmtV, xLabel(d), xTitle(d), xSteps [narrow, mid, wide], tipExtra(d), area
+function lineChart(el, data, series, opt) {
+  const W = el.clientWidth || 700, H = Math.round(Math.max(230, Math.min(330, W * .46)));
+  const m = { t: 14, r: 84, b: 26, l: 52 };
+  const svg = svgRoot(el, W, H, opt.label);
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const ymax = niceMax(Math.max(...data.flatMap(d => series.map(sr => d[sr.key]))));
+  const X = i => m.l + (iw * i) / (data.length - 1), Y = v => m.t + ih - (ih * v) / ymax;
+  const g = s("g", { class: "grid" }, svg), ax = s("g", { class: "axis" }, svg);
+  for (let k = 0; k <= 4; k++) {
+    const v = (ymax * k) / 4, y = Y(v);
+    s("line", { x1: m.l, x2: m.l + iw, y1: y, y2: y }, g);
+    txt(ax, m.l - 8, y + 4, opt.fmtY(v), { "text-anchor": "end" });
+  }
+  const [sN, sM, sW] = opt.xSteps || [4, 3, 2];
+  const step = W < 420 ? sN : W < 640 ? sM : sW;
+  data.forEach((d, i) => { if (i % step === 0) txt(ax, X(i), H - 6, opt.xLabel(d), { "text-anchor": "middle" }); });
+  if (opt.area !== false) {
+    const p0 = series[0];
+    s("path", { d: `M${X(0)},${Y(0)}` + data.map((d, i) => `L${X(i)},${Y(d[p0.key])}`).join("") + `L${X(data.length - 1)},${Y(0)}Z`, fill: css("--wash-1") }, svg);
+  }
+  series.forEach(sr => {
+    s("path", { d: data.map((d, i) => (i ? "L" : "M") + X(i) + "," + Y(d[sr.key])).join(""), fill: "none",
+                stroke: sr.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round",
+                ...(sr.dash ? { "stroke-dasharray": "5 4" } : {}) }, svg);
+  });
+  const last = data.length - 1;
+  const ends = series.map(sr => ({ sr, y: Y(data[last][sr.key]) })).sort((a, b) => a.y - b.y);
+  for (let k = 1; k < ends.length; k++) if (ends[k].y - ends[k - 1].y < 30) ends[k].y = ends[k - 1].y + 30;
+  ends.forEach(e => {
+    s("circle", { cx: X(last), cy: Y(data[last][e.sr.key]), r: 4, fill: e.sr.color, stroke: css("--surface-1"), "stroke-width": 2 }, svg);
+    txt(svg, X(last) + 10, e.y - 2, e.sr.short, { class: "lbl" });
+    txt(svg, X(last) + 10, e.y + 12, opt.fmtV(data[last][e.sr.key]));
+  });
+  const cross = s("line", { y1: m.t, y2: m.t + ih, stroke: css("--text-3"), "stroke-width": 1, opacity: 0 }, svg);
+  const dots = series.map(sr => s("circle", { r: 4, fill: sr.color, stroke: css("--surface-1"), "stroke-width": 2, opacity: 0 }, svg));
+  const ov = s("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent", tabindex: 0 }, svg);
+  let cur = last;
+  const show = (i, ev) => {
+    cur = i; const d = data[i];
+    cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("opacity", 1);
+    dots.forEach((c, k) => { c.setAttribute("cx", X(i)); c.setAttribute("cy", Y(d[series[k].key])); c.setAttribute("opacity", 1); });
+    const r = series.map(sr => ({ color: sr.color, value: opt.fmtV(d[sr.key]), name: sr.name }));
+    if (opt.tipExtra) r.push(...opt.tipExtra(d));
+    showTip(ev, opt.xTitle(d), r);
+  };
+  ov.addEventListener("pointermove", ev => {
+    const b = svg.getBoundingClientRect(), px = ((ev.clientX - b.left) / b.width) * W;
+    show(Math.max(0, Math.min(last, Math.round(((px - m.l) / iw) * last))), ev);
+  });
+  ov.addEventListener("focus", ev => show(cur, ev));
+  ov.addEventListener("keydown", ev => {
+    if (ev.key === "ArrowRight" || ev.key === "ArrowLeft") {
+      ev.preventDefault(); const i = Math.max(0, Math.min(last, cur + (ev.key === "ArrowRight" ? 1 : -1)));
+      const b = svg.getBoundingClientRect();
+      show(i, { clientX: b.left + (X(i) / W) * b.width, clientY: b.top + (m.t / H) * b.height + 20 });
+    }
+  });
+  const off = () => { cross.setAttribute("opacity", 0); dots.forEach(c => c.setAttribute("opacity", 0)); hideTip(); };
+  ov.addEventListener("pointerleave", off); ov.addEventListener("blur", off);
+}
+
+// ---------- horizontal bars ----------
+function barsH(el, rows, opt) {
+  const W = el.clientWidth || 600;
+  const ser = opt.series, nS = ser.length;
+  const barH = Math.min(opt.barH || 16, 24), gap = 2, pad = opt.bandPad || 10, band = nS * barH + (nS - 1) * gap + pad;
+  const labW = opt.labelW || Math.min(190, W * .42);
+  const m = { t: 4, r: 64, b: 4, l: labW };
+  const H = m.t + rows.length * band + m.b;
+  const svg = svgRoot(el, W, H, opt.label);
+  const iw = W - m.l - m.r;
+  const max = opt.max || niceMax(Math.max(...rows.flatMap(r => ser.map(sr => r[sr.key]))));
+  const Xs = v => (iw * v) / max;
+  s("line", { x1: m.l, x2: m.l, y1: m.t - 2, y2: H - m.b, stroke: css("--line"), "stroke-width": 1 }, svg);
+  rows.forEach((r, i) => {
+    const y0 = m.t + i * band + pad / 2;
+    txt(svg, m.l - 10, y0 + (nS * barH + (nS - 1) * gap) / 2 + 4, fit(opt.labelOf(r), m.l - 14), { "text-anchor": "end", fill: css("--text-1") });
+    ser.forEach((sr, k) => {
+      const y = y0 + k * (barH + gap), w = Math.max(1, Xs(r[sr.key]));
+      const mark = s("path", { d: barPath(m.l, y, w, barH), fill: sr.color, class: "mark" }, svg);
+      txt(svg, m.l + w + 6, y + barH / 2 + 4, sr.fmt(r[sr.key]), { class: k === 0 ? "lbl val" : "val" });
+      const hit = s("rect", { x: 0, y: y - gap / 2, width: W, height: barH + gap, class: "hit" }, svg);
+      svg.insertBefore(hit, mark);
+      bindHover(hit, mark, el, ev => showTip(ev, opt.labelOf(r), opt.tipRows(r)));
+    });
+  });
+}
+
+// ---------- assembly ----------
+function render(D) {
+  const k = D.kpis, S1 = css("--series-1"), S2 = css("--series-2");
+  const mo = D.monthly, first = mo[0], lastM = mo[mo.length - 1];
+  const peakM = mo.reduce((a, b) => b.trips > a.trips ? b : a);
+  const lowM = mo.reduce((a, b) => b.trips < a.trips ? b : a);
+
+  document.getElementById("period").textContent = "Period: " + k.first_day + " to " + k.last_day;
+  document.getElementById("gen").textContent = "Data loaded on " + D.generated + ".";
+  document.getElementById("excluded").textContent = nf0.format(k.excluded_trips) + " trips (" + pct(100 * k.excluded_trips / (k.trips + k.excluded_trips)) + ") were excluded under these rules; the reason for each is kept in the database.";
+  const kp = document.getElementById("kpis"); kp.textContent = "";
+  [["Valid trips", nf0.format(k.trips), "in " + nf0.format(k.stations) + " stations"],
+   ["Trips per day", nf0.format(k.trips_per_day), "on average"],
+   ["Members", pct(k.pct_members), "of all trips"],
+   ["Electric bikes", pct(k.pct_electric), nf1.format(k.pct_outside_dock) + " % start or end outside a dock"],
+   ["Median trip", nf1.format(k.median_min) + " min", "start to finish"]
+  ].forEach(([a, b, c]) => { const d = h("div", "kpi"); d.appendChild(h("span", null, a)); d.appendChild(h("b", null, b)); d.appendChild(h("small", null, c)); kp.appendChild(d); });
+
+  // monthly demand
+  document.getElementById("sub-demand").textContent =
+    monthTxt(peakM.month) + " was the busiest month, with " + compact(peakM.trips) + " trips; " + monthTxt(lowM.month) + " the quietest, with " + compact(lowM.trips) + ".";
+  document.getElementById("h-monthly").textContent =
+    "Demand peaks in " + MONTHS[+peakM.month.split("-")[1] - 1] + " at " + compact(peakM.trips) + " trips; the quietest month, " + MONTHS[+lowM.month.split("-")[1] - 1] + ", has " + Math.round(100 * lowM.trips / peakM.trips) + " % of that";
+  legend(document.getElementById("lg-monthly"), [{ type: "ln", color: S1, name: "Trips per month" }, { type: "ln", color: S2, name: "3-month average", dash: true }]);
+  lineChart(document.getElementById("c-monthly"), mo,
+    [{ key: "trips", name: "trips", short: "Trips", color: S1 }, { key: "trips_ma3", name: "3-month average", short: "3-mo avg", color: S2, dash: true }],
+    { label: "Trips per month in " + first.month.slice(0, 4), fmtY: compact, fmtV: nf0.format, xLabel: d => monthShort(d.month), xTitle: d => monthTxt(d.month),
+      tipExtra: d => [{ value: pct(d.pct_casual), name: "casual riders" }] });
+  table(document.getElementById("tb-monthly"), [
+    { t: "Month", f: r => monthTxt(r.month) }, { t: "Trips", n: 1, f: r => nf0.format(r.trips) },
+    { t: "3-mo avg", n: 1, f: r => nf0.format(r.trips_ma3) }, { t: "% casual", n: 1, f: r => pct(r.pct_casual) }], mo);
+
+  // electric adoption
+  document.getElementById("h-electric").textContent =
+    "Electric bikes went from " + Math.round(first.pct_electric) + " % to " + Math.round(lastM.pct_electric) + " % of trips in a year";
+  lineChart(document.getElementById("c-electric"), mo, [{ key: "pct_electric", name: "electric", short: "Electric", color: S1 }],
+    { label: "Share of trips on electric bikes by month", fmtY: v => nf0.format(v) + " %", fmtV: pct, xLabel: d => monthShort(d.month), xTitle: d => monthTxt(d.month), xSteps: [4, 4, 3] });
+  table(document.getElementById("tb-electric"), [
+    { t: "Month", f: r => monthTxt(r.month) }, { t: "% electric", n: 1, f: r => pct(r.pct_electric) }], mo);
+
+  // hourly profiles
+  const pivot = dayType => {
+    const rows = [];
+    for (let hr = 0; hr < 24; hr++) {
+      const f = t => (D.hourly.find(r => r.day_type === dayType && r.member_type === t && r.hour === hr) || {}).trips_per_day || 0;
+      rows.push({ hour: hr, member: f("member"), casual: f("casual") });
+    }
+    return rows;
+  };
+  const peakOf = (rows, key) => rows.reduce((a, b) => b[key] > a[key] ? b : a).hour;
+  const wd = pivot("weekday"), we = pivot("weekend");
+  const am = wd.slice(5, 12).reduce((a, b) => b.member > a.member ? b : a).hour, pm = wd.slice(13).reduce((a, b) => b.member > a.member ? b : a).hour;
+  document.getElementById("h-weekday").textContent = "Weekdays have two peaks, at " + hourTxt(am) + " and " + hourTxt(pm) + ", and members drive both";
+  document.getElementById("h-weekend").textContent = "On weekends the commute disappears: everyone rides around " + hourTxt(peakOf(we, "member")) + "–" + hourTxt(peakOf(we, "member") + 1);
+  const hl = [{ type: "ln", color: S1, name: "Members" }, { type: "ln", color: S2, name: "Casual riders" }];
+  legend(document.getElementById("lg-hourly"), hl); legend(document.getElementById("lg-hourly2"), hl);
+  const hOpt = lbl => ({ label: lbl, fmtY: v => nf0.format(v), fmtV: v => nf0.format(v), xLabel: d => d.hour + "h", xTitle: d => hourTxt(d.hour) + " – " + hourTxt((d.hour + 1) % 24), xSteps: [6, 4, 3] });
+  const hs = [{ key: "member", name: "members", short: "Members", color: S1 }, { key: "casual", name: "casual riders", short: "Casual", color: S2 }];
+  lineChart(document.getElementById("c-weekday"), wd, hs, { ...hOpt("Average trips per weekday by hour"), area: false });
+  lineChart(document.getElementById("c-weekend"), we, hs, { ...hOpt("Average trips per weekend day by hour"), area: false });
+  const hrows = []; for (let hr = 0; hr < 24; hr++) hrows.push({ hour: hr, wm: wd[hr].member, wc: wd[hr].casual, em: we[hr].member, ec: we[hr].casual });
+  table(document.getElementById("tb-hourly"), [
+    { t: "Hour", f: r => r.hour + ":00" }, { t: "Weekday members", n: 1, f: r => nf0.format(r.wm) }, { t: "Weekday casual", n: 1, f: r => nf0.format(r.wc) },
+    { t: "Weekend members", n: 1, f: r => nf0.format(r.em) }, { t: "Weekend casual", n: 1, f: r => nf0.format(r.ec) }], hrows);
+
+  // members vs casual
+  const rm = D.riders.find(r => r.member_type === "member"), rc = D.riders.find(r => r.member_type === "casual");
+  document.getElementById("h-riders").textContent =
+    "Casual riders take trips " + Math.round(100 * (rc.median_min / rm.median_min - 1)) + " % longer and are " + nf1.format(rc.pct_round_trip / rm.pct_round_trip) + "× more likely to return to the same dock";
+  const cmp = document.getElementById("cmp"); cmp.textContent = "";
+  cmp.appendChild(h("div", "hd", "")); cmp.appendChild(h("div", "hd", "Members")); cmp.appendChild(h("div", "hd", "Casual"));
+  [["Share of trips", r => pct(r.pct_trips)], ["Median trip", r => nf1.format(r.median_min) + " min"],
+   ["Trips at commute hours", r => pct(r.pct_commute_hours)], ["Trips on weekends", r => pct(r.pct_weekend)],
+   ["Trips on electric bikes", r => pct(r.pct_electric)], ["Round trips", r => pct(r.pct_round_trip)]
+  ].forEach(([label, f]) => { cmp.appendChild(h("div", "k", label)); cmp.appendChild(h("div", "v m", f(rm))); cmp.appendChild(h("div", "v c", f(rc))); });
+
+  // stations
+  const topS = D.stations[0], cc = D.concentration;
+  document.getElementById("sub-stations").textContent =
+    "Among " + nf0.format(cc.stations) + " stations, demand is uneven, and the commute makes docks fill and empty in a predictable tide.";
+  document.getElementById("h-stations").textContent = topS.station + " is the busiest station, with " + nf1.format(topS.pct_of_departures) + " % of all departures";
+  barsH(document.getElementById("c-stations"), D.stations, {
+    label: "Top 15 stations by departures", barH: 14, bandPad: 8, labelOf: r => r.station,
+    series: [{ key: "trips", name: "departures", color: S1, fmt: nf0.format }],
+    tipRows: r => [{ color: S1, value: nf0.format(r.trips), name: "departures" }, { value: nf1.format(r.pct_of_departures) + " %", name: "of all departures" }, { value: pct(r.pct_members), name: "members" }]
+  });
+  table(document.getElementById("tb-stations"), [
+    { t: "#", n: 1, f: r => r.rank }, { t: "Station", f: r => r.station }, { t: "Departures", n: 1, f: r => nf0.format(r.trips) },
+    { t: "% of total", n: 1, f: r => nf1.format(r.pct_of_departures) + " %" }, { t: "% members", n: 1, f: r => pct(r.pct_members) }], D.stations);
+  document.getElementById("d-conc").textContent = "Share of all departures made by the busiest stations.";
+  const sc = document.getElementById("s-conc"); sc.textContent = "";
+  [[cc.pct_top1, "top 1 % of stations"], [cc.pct_top10, "top 10 %"], [cc.pct_top20, "top 20 %"]].forEach(([a, b]) => {
+    const d = h("div"); d.appendChild(h("b", null, pct(a))); d.appendChild(h("span", null, "of trips start at the " + b)); sc.appendChild(d); });
+
+  // rebalancing
+  const rb = (period, behavior) => D.rebalance.filter(r => r.period === period && r.behavior === behavior).map(r => ({ ...r, flow: Math.abs(r.net_flow) }))
+    .sort((a, b) => b.flow - a.flow).slice(0, 8);
+  const morningFills = rb("morning", "fills"), morningDrains = rb("morning", "drains");
+  const eveDrains10 = new Set(D.rebalance.filter(r => r.period === "evening" && r.behavior === "drains").map(r => r.station));
+  const overlap = D.rebalance.filter(r => r.period === "morning" && r.behavior === "fills" && eveDrains10.has(r.station)).length;
+  document.getElementById("h-fills").textContent = overlap + " of the 10 stations that fill up each morning are among the 10 that empty each evening";
+  document.getElementById("h-drains").textContent = "The mirror image: stations that run out of bikes on weekday mornings";
+  const rbOpt = (lbl, color, word) => ({ label: lbl, barH: 14, bandPad: 8, labelOf: r => r.station,
+    series: [{ key: "flow", name: word, color, fmt: v => nf0.format(v) }],
+    tipRows: r => [{ color, value: nf0.format(r.flow), name: word }, { value: nf0.format(r.arrivals), name: "arrivals" }, { value: nf0.format(r.departures), name: "departures" }] });
+  barsH(document.getElementById("c-fills"), morningFills, rbOpt("Stations that fill up on weekday mornings", S1, "more arrivals than departures"));
+  barsH(document.getElementById("c-drains"), morningDrains, rbOpt("Stations that empty on weekday mornings", S2, "more departures than arrivals"));
+  table(document.getElementById("tb-rebalance"), [
+    { t: "Period", f: r => r.period }, { t: "Station", f: r => r.station }, { t: "Departures", n: 1, f: r => nf0.format(r.departures) },
+    { t: "Arrivals", n: 1, f: r => nf0.format(r.arrivals) }, { t: "Net flow", n: 1, f: r => (r.net_flow > 0 ? "+" : "") + nf0.format(r.net_flow) }], D.rebalance);
+
+  // leisure and routes
+  const lz = D.leisure;
+  document.getElementById("h-leisure").textContent = "Round trips cluster at parks and monuments: " + lz[0].station + " leads";
+  barsH(document.getElementById("c-leisure"), lz, {
+    label: "Stations with the most round trips", barH: 14, bandPad: 8, labelOf: r => r.station,
+    series: [{ key: "round_trips", name: "round trips", color: S2, fmt: nf0.format }],
+    tipRows: r => [{ color: S2, value: nf0.format(r.round_trips), name: "round trips" }, { value: nf1.format(r.median_min) + " min", name: "median duration" }, { value: pct(r.pct_casual), name: "casual riders" }]
+  });
+  table(document.getElementById("tb-leisure"), [
+    { t: "#", n: 1, f: r => r.rank }, { t: "Station", f: r => r.station }, { t: "Round trips", n: 1, f: r => nf0.format(r.round_trips) },
+    { t: "Median min", n: 1, f: r => nf1.format(r.median_min) }, { t: "% casual", n: 1, f: r => pct(r.pct_casual) }], lz);
+  table(document.getElementById("tb-routes"), [
+    { t: "#", n: 1, f: r => r.rank }, { t: "Route", f: r => r.origin + " → " + r.destination }, { t: "Trips", n: 1, f: r => nf0.format(r.trips) },
+    { t: "Median min", n: 1, f: r => nf1.format(r.median_min) }], D.routes);
+}
+
+let DATA = null, rt;
+fetch("data/dashboard.json")
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(d => { DATA = d; render(d); })
+  .catch(() => { document.getElementById("main").replaceChildren(h("p", "wrap err",
+    "The data could not be loaded. If you opened the file directly, serve it with a local server: python3 -m http.server --directory docs")); });
+let lastW = innerWidth;
+addEventListener("resize", () => {
+  if (innerWidth === lastW) return;
+  lastW = innerWidth; clearTimeout(rt); rt = setTimeout(() => DATA && render(DATA), 150);
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => DATA && render(DATA));
+</script>
+</body>
+</html>

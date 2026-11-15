@@ -1,0 +1,56 @@
+# Rebuilds the database from scratch and checks that the published
+# dashboard comes from this code: data-quality checks OK and identical JSON.
+name: Verify load
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bikeshare
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: bikeshare
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the 12 monthly files
+        run: ./scripts/download_data.sh
+
+      - name: Load and validate (fails if any check says REVIEW)
+        run: ./scripts/load.sh
+
+      - name: Run the analysis queries
+        run: |
+          for f in sql/analysis/0[1-9]*.sql; do
+            echo "→ $f"
+            psql -X -q -v ON_ERROR_STOP=1 -f "$f" > /dev/null
+          done
+
+      - name: Compare the exported JSON with the one in the repository
+        run: |
+          cp docs/data/dashboard.json /tmp/published.json
+          ./scripts/export_dashboard.sh
+          # 'generated' is the load date: ignored in the comparison
+          no_date() { sed -E 's/"generated" *: *"[^"]*"//' "$1"; }
+          diff <(no_date /tmp/published.json) <(no_date docs/data/dashboard.json)

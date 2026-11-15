@@ -1,0 +1,5 @@
+# Raw CSV files are not versioned (size); scripts/download_data.sh fetches them
+/data/
+*.csv
+.env
+.DS_Store
