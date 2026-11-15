@@ -111,6 +111,8 @@ export PGDATABASE=bikeshare          # plus PGHOST / PGUSER if needed
 
 The full load takes about three minutes on my machine (the first push to GitHub ran it end to end in under four). At the end it prints the data-quality checks, which must all say `OK`; if any says `REVIEW`, the script exits with an error. Every push runs this same load in GitHub Actions and compares the exported JSON with the one in the repository.
 
+The dashboard is served by GitHub Pages straight from `docs/` (Settings → Pages → Deploy from a branch → `main` → `/docs`).
+
 To see the dashboard locally:
 
 ```bash
