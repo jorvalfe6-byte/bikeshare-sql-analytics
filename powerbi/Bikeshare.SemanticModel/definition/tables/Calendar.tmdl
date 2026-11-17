@@ -1,0 +1,77 @@
+table Calendar
+	lineageTag: 3e512db3-423d-17a9-fcb6-595b85b3e60c
+	dataCategory: Time
+
+	column Date
+		dataType: dateTime
+		isKey
+		formatString: yyyy-mm-dd
+		lineageTag: cd630c46-b37c-662a-ada4-87030a93aa20
+		summarizeBy: none
+		sourceColumn: date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column month_num
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 466e1729-18b2-eb78-fce0-a6c03c86d687
+		summarizeBy: none
+		sourceColumn: month_num
+
+		annotation SummarizationSetBy = Automatic
+
+	column Month
+		dataType: string
+		lineageTag: d8cd30ff-fa16-0ab3-b29c-fbd5bba1e593
+		summarizeBy: none
+		sourceColumn: month
+		sortByColumn: month_num
+
+		annotation SummarizationSetBy = Automatic
+
+	column weekday_num
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 780d2c08-a0d9-70b5-3bd1-7960c75359fe
+		summarizeBy: none
+		sourceColumn: weekday_num
+
+		annotation SummarizationSetBy = Automatic
+
+	column Weekday
+		dataType: string
+		lineageTag: 2d54d243-294c-2f91-795f-70ca688d6913
+		summarizeBy: none
+		sourceColumn: weekday
+		sortByColumn: weekday_num
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Day type'
+		dataType: string
+		lineageTag: c1e67f9f-1fa7-2754-b414-78a7fa473905
+		summarizeBy: none
+		sourceColumn: day_type
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Calendar = m
+		mode: import
+		source =
+				let
+				    Archivo = "dim_date.csv",
+				    Binario = if Text.StartsWith(DataPath, "http")
+				        then Web.Contents(DataPath, [RelativePath = Archivo])
+				        else File.Contents(DataPath & Archivo),
+				    Fuente = Csv.Document(Binario, [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Encabezados = Table.PromoteHeaders(Fuente, [PromoteAllScalars = true]),
+				    Tipos = Table.TransformColumnTypes(Encabezados, {{"date", type date}, {"month_num", Int64.Type}, {"month", type text}, {"weekday_num", Int64.Type}, {"weekday", type text}, {"day_type", type text}}, "en-US")
+				in
+				    Tipos
+
+	annotation PBI_ResultType = Table

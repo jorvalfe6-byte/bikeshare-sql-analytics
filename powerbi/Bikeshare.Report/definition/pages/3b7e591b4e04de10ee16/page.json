@@ -1,0 +1,8 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.4.0/schema.json",
+  "name": "3b7e591b4e04de10ee16",
+  "displayName": "When people ride",
+  "displayOption": "FitToPage",
+  "height": 720,
+  "width": 1280
+}

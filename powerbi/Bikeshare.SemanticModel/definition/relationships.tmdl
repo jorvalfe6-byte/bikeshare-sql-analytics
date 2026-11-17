@@ -1,0 +1,32 @@
+relationship c105af18-1382-dbc2-5513-99bc3f1e6c2a
+	fromColumn: Trips.trip_date
+	toColumn: Calendar.Date
+
+relationship dbbc576c-a6be-56c9-9004-4894bb95d462
+	fromColumn: Trips.member_type
+	toColumn: Rider.member_type
+
+relationship f844a779-0bc1-81ed-0529-0332d9d78605
+	fromColumn: Trips.rideable_type
+	toColumn: Bike.rideable_type
+
+relationship b3c4df83-103c-4265-a2bc-bea23dffdf3d
+	fromColumn: 'Station activity'.month_date
+	toColumn: Calendar.Date
+
+relationship 226feefe-e6bc-9ff1-7382-c9f56562973e
+	fromColumn: 'Station activity'.station_id
+	toColumn: Station.station_id
+
+relationship eb68a251-7d5c-4da1-046c-cfde508bf904
+	fromColumn: 'Station activity'.member_type
+	toColumn: Rider.member_type
+
+relationship f9eeed69-87e8-e5d7-edc5-e0c6a11ce2ba
+	fromColumn: Duration.member_type
+	toColumn: Rider.member_type
+
+relationship 5e2dbd65-8dc1-1605-d764-f94092e331d5
+	fromColumn: Duration.rideable_type
+	toColumn: Bike.rideable_type
+

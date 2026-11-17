@@ -4,6 +4,8 @@ I took a full year (2024) of public trip data from Capital Bikeshare, the bike-s
 
 **Live dashboard:** https://jorvalfe6-byte.github.io/bikeshare-sql-analytics/
 
+**Power BI report:** the same analysis in a 4-page report, in [`powerbi/`](powerbi/) ([details below](#power-bi-report)).
+
 The dashboard is a single static page. It reads a 115 KB JSON with already-aggregated results (plus the location of each station) and draws every chart, including the station map, with no external libraries and no map tiles.
 
 ![Dashboard header and key figures](docs/img/header.png)
@@ -97,6 +99,33 @@ Every file in `sql/analysis/` runs on its own, and its header says what each res
 - **Station coordinates come from the dock, not the average.** Docked bikes report the exact dock coordinates; electric bikes report GPS points that scatter. The most repeated pair is the station.
 - **A trap I fell into and fixed.** A comparison against a missing station makes a flag NULL, not false, and a NULL flag quietly dropped 18,262 trips from every analysis until I checked the totals. The flags now test for NULL explicitly.
 
+## Power BI report
+
+Besides the web dashboard, the repo includes a Power BI report in `powerbi/` with the same analysis, so it can be sliced by month and rider type without writing SQL.
+
+![Power BI report, Overview page](docs/img/powerbi-overview.jpg)
+
+![Power BI report, When people ride page](docs/img/powerbi-when.jpg)
+
+![Power BI report, Members vs casual page](docs/img/powerbi-riders.jpg)
+
+![Power BI report, Stations page](docs/img/powerbi-stations.jpg)
+
+| Page | What it answers |
+|---|---|
+| Overview | Trips, trips per day, average duration, e-bike share and dockless share; trips per month by rider type |
+| When people ride | Trips by start hour, weekday vs weekend; trips per day of the week |
+| Members vs casual | Duration, trips over 30 minutes, round trips and distance by rider type; duration distribution |
+| Stations | Station map drawn from coordinates (no map tiles) and the docks that fill up on weekday mornings |
+
+**How it is built.** 6.1 million trips do not belong in a CSV inside a Git repo, so `sql/05_powerbi_views.sql` builds a `powerbi` star schema with the facts pre-aggregated at the finest grain the report needs: trips by date × start hour × rider type × bike type (34,870 rows), starts and arrivals by month × station × rider type, and trips by 1-minute duration bucket. Every measure is a sum of those columns, so totals stay exact at any level. `scripts/export_powerbi.sh` writes each view to `powerbi/data/` (2.9 MB in all) and the report reads those files, so it opens without PostgreSQL.
+
+The project uses the PBIP format: the model in TMDL and the report in PBIR, plain text that diffs like any other file. I checked the measures against the SQL queries: January has 236 thousand trips and October 722 thousand, the e-bike share goes from 51 % to 71 %, 28 % of trips start or end outside a dock, casual riders make round trips 5.2 % of the time against 1.3 % for members, and 17 % of their trips run past half an hour against 6 %.
+
+One difference with the README figures: medians cannot be rebuilt from aggregated sums, so the report shows mean durations (21.4 minutes for casual riders, 12.1 for members). The medians quoted above come from `sql/analysis`.
+
+**To open it** you need Power BI Desktop (free, Windows only). Open `powerbi/Bikeshare.pbip`. The `DataPath` parameter points to the `powerbi/data/` folder of this repository on GitHub, so a refresh is enough. To read the CSV files from your local copy instead, change `DataPath` in Transform data → Edit parameters to your `powerbi\data\` folder (with the trailing backslash).
+
 ## How to run it
 
 You need PostgreSQL 14 or newer, `psql` and Python 3.
@@ -107,6 +136,7 @@ export PGDATABASE=bikeshare          # plus PGHOST / PGUSER if needed
 ./scripts/download_data.sh           # 12 files, about 240 MB zipped
 ./scripts/load.sh                    # schema, load, transform, views and checks
 ./scripts/export_dashboard.sh        # regenerates docs/data/dashboard.json
+./scripts/export_powerbi.sh          # regenerates the CSV files in powerbi/data/
 ```
 
 The full load takes about three minutes on my machine (the first push to GitHub ran it end to end in under four). At the end it prints the data-quality checks, which must all say `OK`; if any says `REVIEW`, the script exits with an error. Every push runs this same load in GitHub Actions and compares the exported JSON with the one in the repository.
@@ -129,11 +159,18 @@ sql/
   02_transform.sql         staging → core, audit and indexes
   03_marts.sql             fact_trip with the validity rules
   04_dashboard_views.sql   views that feed the dashboard
+  05_powerbi_views.sql     aggregated star schema for Power BI (schema powerbi)
   analysis/                one query file per question (00 = checks, 01–12 = analysis)
 scripts/
   download_data.sh         fetches the 12 monthly files
   load.sh                  end-to-end load and checks
   export_dashboard.sh      exports aggregates to JSON
+  export_powerbi.sh        exports the powerbi schema to CSV
+powerbi/
+  Bikeshare.pbip           Power BI project (open with Power BI Desktop)
+  Bikeshare.SemanticModel/ model: tables, relationships and DAX measures (TMDL)
+  Bikeshare.Report/        pages and visuals (PBIR)
+  data/                    CSV files the report reads
 docs/
   index.html               dashboard (GitHub Pages)
   data/dashboard.json      aggregated results
@@ -143,7 +180,7 @@ data/                      raw CSV files (not committed)
 
 ## License
 
-- **Data:** [Capital Bikeshare system data](https://capitalbikeshare.com/system-data), under the [Capital Bikeshare Data License Agreement](https://capitalbikeshare.com/data-license-agreement). The raw files are not in the repository; `docs/data/` contains aggregates and station locations only.
+- **Data:** [Capital Bikeshare system data](https://capitalbikeshare.com/system-data), under the [Capital Bikeshare Data License Agreement](https://capitalbikeshare.com/data-license-agreement). The raw files are not in the repository; `docs/data/` and `powerbi/data/` contain aggregates and station locations only.
 - **Code** (SQL, scripts and page): MIT, see [LICENSE](LICENSE).
 
 ---

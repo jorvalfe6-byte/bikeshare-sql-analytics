@@ -1,0 +1,165 @@
+/// Valid trips aggregated by date x start hour x rider type x bike type.
+table Trips
+	lineageTag: 31ec754e-f4dc-339a-e279-bf0e3c168c98
+
+	/// Valid trips: excludes trips that end before they start, failed undocks and trips over 24 h.
+	measure 'Total trips' = SUM(Trips[trips])
+		formatString: #,0
+		lineageTag: 611a6208-f5d7-4e2c-7f9e-e0b30451730f
+
+	measure 'Trips per day' = DIVIDE([Total trips], CALCULATE(DISTINCTCOUNT(Trips[trip_date])))
+		formatString: #,0
+		lineageTag: c6ed6e8e-14c8-5972-c3eb-233ef1fd59eb
+
+	/// Mean, not median: the README quotes medians, which cannot be rebuilt from aggregates.
+	measure 'Avg duration (min)' = DIVIDE(SUM(Trips[duration_min_sum]), [Total trips])
+		formatString: 0.0
+		lineageTag: c80c4d3a-abe2-d838-1d65-a2aab09f29bf
+
+	measure '% over 30 min' = DIVIDE(SUM(Trips[trips_over_30min]), [Total trips])
+		formatString: 0.0%
+		lineageTag: de7371e4-d4c1-2951-4f6a-bc0d4476401d
+
+	/// Trips that end at the dock they started from.
+	measure '% round trips' = DIVIDE(SUM(Trips[round_trips]), [Total trips])
+		formatString: 0.0%
+		lineageTag: 5d19bf69-bebc-494e-c1a9-b7a6e154798f
+
+	/// Trips that start or end away from a station.
+	measure '% outside a dock' = DIVIDE(SUM(Trips[trips_outside_dock]), [Total trips])
+		formatString: 0.0%
+		lineageTag: 9de34747-035c-79ba-9d8f-fca3c9e72e25
+
+	measure '% e-bike' = DIVIDE(CALCULATE([Total trips], Trips[rideable_type] = "electric_bike"), [Total trips])
+		formatString: 0.0%
+		lineageTag: 4e0b7acf-8088-969f-865f-073a09c394ff
+
+	/// Straight-line distance, a lower bound of the distance ridden.
+	measure 'Avg distance (km)' = DIVIDE(SUM(Trips[distance_km_sum]), SUM(Trips[trips_with_distance]))
+		formatString: 0.00
+		lineageTag: 86ed06ef-bc1e-5ec0-90c7-eb5cafb2366e
+
+	column trip_date
+		dataType: dateTime
+		isHidden
+		formatString: yyyy-mm-dd
+		lineageTag: f16e1146-75aa-278a-7cff-e900ef5eae57
+		summarizeBy: none
+		sourceColumn: trip_date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'Start hour'
+		dataType: int64
+		formatString: 0
+		lineageTag: 9eee985f-c95c-2e35-d6e0-16a2b0a16d57
+		summarizeBy: none
+		sourceColumn: start_hour
+
+		annotation SummarizationSetBy = Automatic
+
+	column member_type
+		dataType: string
+		isHidden
+		lineageTag: bc0b69ce-eb1d-0afb-fd39-93f795cd3243
+		summarizeBy: none
+		sourceColumn: member_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column rideable_type
+		dataType: string
+		isHidden
+		lineageTag: ac32f0e3-2038-648f-5ff7-7e5c32308556
+		summarizeBy: none
+		sourceColumn: rideable_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column trips
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: f6c50bbf-3231-80fa-81f3-52b016593782
+		summarizeBy: none
+		sourceColumn: trips
+
+		annotation SummarizationSetBy = Automatic
+
+	column duration_min_sum
+		dataType: double
+		isHidden
+		formatString: #,0.0
+		lineageTag: f9425c66-2716-c94b-02bf-2da8362f9a17
+		summarizeBy: none
+		sourceColumn: duration_min_sum
+
+		annotation SummarizationSetBy = Automatic
+
+	column trips_over_30min
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 534855e1-1c53-aa2d-6eb5-980719b556e4
+		summarizeBy: none
+		sourceColumn: trips_over_30min
+
+		annotation SummarizationSetBy = Automatic
+
+	column round_trips
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: b60a1cdc-604b-ed8a-ab4f-c8d8e6664c9d
+		summarizeBy: none
+		sourceColumn: round_trips
+
+		annotation SummarizationSetBy = Automatic
+
+	column trips_outside_dock
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: cb7d9d98-6180-dcc4-5fc8-b86aa8d9567e
+		summarizeBy: none
+		sourceColumn: trips_outside_dock
+
+		annotation SummarizationSetBy = Automatic
+
+	column trips_with_distance
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: d2c13138-2ac7-980f-4d43-25e5406c0def
+		summarizeBy: none
+		sourceColumn: trips_with_distance
+
+		annotation SummarizationSetBy = Automatic
+
+	column distance_km_sum
+		dataType: double
+		isHidden
+		formatString: #,0.0
+		lineageTag: fc42ec6b-08e2-9826-0abe-4596bae1f782
+		summarizeBy: none
+		sourceColumn: distance_km_sum
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Trips = m
+		mode: import
+		source =
+				let
+				    Archivo = "fact_trips_hourly.csv",
+				    Binario = if Text.StartsWith(DataPath, "http")
+				        then Web.Contents(DataPath, [RelativePath = Archivo])
+				        else File.Contents(DataPath & Archivo),
+				    Fuente = Csv.Document(Binario, [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Encabezados = Table.PromoteHeaders(Fuente, [PromoteAllScalars = true]),
+				    Tipos = Table.TransformColumnTypes(Encabezados, {{"trip_date", type date}, {"start_hour", Int64.Type}, {"member_type", type text}, {"rideable_type", type text}, {"trips", Int64.Type}, {"duration_min_sum", type number}, {"trips_over_30min", Int64.Type}, {"round_trips", Int64.Type}, {"trips_outside_dock", Int64.Type}, {"trips_with_distance", Int64.Type}, {"distance_km_sum", type number}}, "en-US")
+				in
+				    Tipos
+
+	annotation PBI_ResultType = Table

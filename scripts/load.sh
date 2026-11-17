@@ -27,6 +27,7 @@ done
 echo "→ core";      "${PSQL[@]}" -f "$ROOT/sql/02_transform.sql"
 echo "→ marts";     "${PSQL[@]}" -f "$ROOT/sql/03_marts.sql"
 echo "→ dashboard"; "${PSQL[@]}" -f "$ROOT/sql/04_dashboard_views.sql"
+echo "→ power bi";  "${PSQL[@]}" -f "$ROOT/sql/05_powerbi_views.sql"
 echo "→ checks"
 checks="$("${PSQL[@]}" -f "$ROOT/sql/analysis/00_data_quality.sql")"
 echo "$checks"

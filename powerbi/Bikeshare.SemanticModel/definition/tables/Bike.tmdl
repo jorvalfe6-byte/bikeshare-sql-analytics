@@ -1,0 +1,35 @@
+table Bike
+	lineageTag: 8ba9706d-e5fc-83d8-df17-799469f0dbe6
+
+	column rideable_type
+		dataType: string
+		isHidden
+		lineageTag: ea953a72-4751-f9ee-f949-192084aeac37
+		summarizeBy: none
+		sourceColumn: rideable_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Bike type'
+		dataType: string
+		lineageTag: 8fccfb35-5ee5-8f72-d666-20f69606c730
+		summarizeBy: none
+		sourceColumn: bike
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Bike = m
+		mode: import
+		source =
+				let
+				    Archivo = "dim_bike.csv",
+				    Binario = if Text.StartsWith(DataPath, "http")
+				        then Web.Contents(DataPath, [RelativePath = Archivo])
+				        else File.Contents(DataPath & Archivo),
+				    Fuente = Csv.Document(Binario, [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Encabezados = Table.PromoteHeaders(Fuente, [PromoteAllScalars = true]),
+				    Tipos = Table.TransformColumnTypes(Encabezados, {{"rideable_type", type text}, {"bike", type text}}, "en-US")
+				in
+				    Tipos
+
+	annotation PBI_ResultType = Table

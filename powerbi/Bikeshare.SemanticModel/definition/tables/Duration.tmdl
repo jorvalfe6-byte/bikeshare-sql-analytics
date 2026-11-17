@@ -1,0 +1,60 @@
+/// Valid trips by 1-minute duration bucket (60 = 60 minutes or more).
+table Duration
+	lineageTag: 1dfe8518-06c7-c059-253a-6cdb484f37a1
+
+	measure 'Trips by duration' = SUM(Duration[trips])
+		formatString: #,0
+		lineageTag: f7e5a98b-3cb0-3979-f7b5-ea2fd2297d17
+
+	column member_type
+		dataType: string
+		isHidden
+		lineageTag: 1f418be9-df63-7965-57ef-568e4809af67
+		summarizeBy: none
+		sourceColumn: member_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column rideable_type
+		dataType: string
+		isHidden
+		lineageTag: f765f9c0-d948-0f5e-9792-a1eb3b75be68
+		summarizeBy: none
+		sourceColumn: rideable_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column Minutes
+		dataType: int64
+		formatString: 0
+		lineageTag: c740ce62-993e-18cc-ec83-ecaf44b5f8b2
+		summarizeBy: none
+		sourceColumn: minute_bucket
+
+		annotation SummarizationSetBy = Automatic
+
+	column trips
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 021ae7fe-64f2-b61b-b5ea-de41d66dc6ea
+		summarizeBy: none
+		sourceColumn: trips
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Duration = m
+		mode: import
+		source =
+				let
+				    Archivo = "fact_duration.csv",
+				    Binario = if Text.StartsWith(DataPath, "http")
+				        then Web.Contents(DataPath, [RelativePath = Archivo])
+				        else File.Contents(DataPath & Archivo),
+				    Fuente = Csv.Document(Binario, [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Encabezados = Table.PromoteHeaders(Fuente, [PromoteAllScalars = true]),
+				    Tipos = Table.TransformColumnTypes(Encabezados, {{"member_type", type text}, {"rideable_type", type text}, {"minute_bucket", Int64.Type}, {"trips", Int64.Type}}, "en-US")
+				in
+				    Tipos
+
+	annotation PBI_ResultType = Table

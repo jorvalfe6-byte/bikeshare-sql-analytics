@@ -1,0 +1,114 @@
+/// Starts and arrivals by month x station x rider type.
+table 'Station activity'
+	lineageTag: bcd4f0ad-ab86-545e-a0f4-9258972c6199
+
+	measure 'Trips started' = SUM('Station activity'[starts])
+		formatString: #,0
+		lineageTag: 0e97c744-8e20-f009-1cd2-1ba242c83e7e
+
+	measure 'Trips ended' = SUM('Station activity'[arrivals])
+		formatString: #,0
+		lineageTag: 89341b9c-f0e6-c321-79de-a30929139c54
+
+	measure '% of starts' = DIVIDE([Trips started], CALCULATE([Trips started], REMOVEFILTERS(Station)))
+		formatString: 0.00%
+		lineageTag: 60c6eb97-58c1-9c81-c653-69b88213784e
+
+	/// Weekday trips starting 7-9 h: arrivals minus departures. Positive = the dock fills up.
+	measure 'Net arrivals 7-9 h' = SUM('Station activity'[am_arrivals]) - SUM('Station activity'[am_starts])
+		formatString: +#,0;-#,0;0
+		lineageTag: 8a117627-88a8-fee2-d0f3-2386706c940d
+
+	measure Longitude = AVERAGE(Station[lng])
+		formatString: 0.0000
+		lineageTag: 4ed0ef68-1638-1536-6dec-03442abd041f
+
+	measure Latitude = AVERAGE(Station[lat])
+		formatString: 0.0000
+		lineageTag: d57c73df-5754-9a19-aab4-dbc699461f47
+
+	column month_date
+		dataType: dateTime
+		isHidden
+		formatString: yyyy-mm-dd
+		lineageTag: 98ec3658-e644-182f-c6d5-6d2bd0a531e8
+		summarizeBy: none
+		sourceColumn: month_date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column station_id
+		dataType: string
+		isHidden
+		lineageTag: 6ec1c852-db0c-cb94-cc29-f2be5538faad
+		summarizeBy: none
+		sourceColumn: station_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column member_type
+		dataType: string
+		isHidden
+		lineageTag: 312e53fc-0bbd-df18-6d33-1eedf477c65b
+		summarizeBy: none
+		sourceColumn: member_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column starts
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 07985c0d-44d2-c084-db1a-d662f5a7ac52
+		summarizeBy: none
+		sourceColumn: starts
+
+		annotation SummarizationSetBy = Automatic
+
+	column arrivals
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 811836b8-0760-1dd1-a7e9-8bfcc6336925
+		summarizeBy: none
+		sourceColumn: arrivals
+
+		annotation SummarizationSetBy = Automatic
+
+	column am_starts
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: d701bc50-8d26-c8e6-d687-9d2a85cb02cd
+		summarizeBy: none
+		sourceColumn: am_starts
+
+		annotation SummarizationSetBy = Automatic
+
+	column am_arrivals
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: c678643b-ac73-4a49-749e-63d1058eaae2
+		summarizeBy: none
+		sourceColumn: am_arrivals
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Station activity' = m
+		mode: import
+		source =
+				let
+				    Archivo = "fact_station_month.csv",
+				    Binario = if Text.StartsWith(DataPath, "http")
+				        then Web.Contents(DataPath, [RelativePath = Archivo])
+				        else File.Contents(DataPath & Archivo),
+				    Fuente = Csv.Document(Binario, [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Encabezados = Table.PromoteHeaders(Fuente, [PromoteAllScalars = true]),
+				    Tipos = Table.TransformColumnTypes(Encabezados, {{"month_date", type date}, {"station_id", type text}, {"member_type", type text}, {"starts", Int64.Type}, {"arrivals", Int64.Type}, {"am_starts", Int64.Type}, {"am_arrivals", Int64.Type}}, "en-US")
+				in
+				    Tipos
+
+	annotation PBI_ResultType = Table

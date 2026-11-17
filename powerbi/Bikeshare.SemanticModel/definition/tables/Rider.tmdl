@@ -1,0 +1,35 @@
+table Rider
+	lineageTag: 3f0b9cb8-8227-b264-a32c-3c51e3a15e7b
+
+	column member_type
+		dataType: string
+		isHidden
+		lineageTag: 9c88d823-7051-5453-a60c-b196da363fad
+		summarizeBy: none
+		sourceColumn: member_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Rider type'
+		dataType: string
+		lineageTag: 115f5a93-96cd-be18-188b-fa1255ba0b4a
+		summarizeBy: none
+		sourceColumn: rider
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Rider = m
+		mode: import
+		source =
+				let
+				    Archivo = "dim_rider.csv",
+				    Binario = if Text.StartsWith(DataPath, "http")
+				        then Web.Contents(DataPath, [RelativePath = Archivo])
+				        else File.Contents(DataPath & Archivo),
+				    Fuente = Csv.Document(Binario, [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Encabezados = Table.PromoteHeaders(Fuente, [PromoteAllScalars = true]),
+				    Tipos = Table.TransformColumnTypes(Encabezados, {{"member_type", type text}, {"rider", type text}}, "en-US")
+				in
+				    Tipos
+
+	annotation PBI_ResultType = Table

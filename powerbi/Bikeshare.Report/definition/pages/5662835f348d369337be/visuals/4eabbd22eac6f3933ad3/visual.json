@@ -1,0 +1,151 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+  "name": "4eabbd22eac6f3933ad3",
+  "position": {
+    "x": 24,
+    "y": 92,
+    "z": 1003,
+    "height": 150,
+    "width": 1232,
+    "tabOrder": 1003
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "drillFilterOtherVisuals": true,
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Rider"
+                    }
+                  },
+                  "Property": "Rider type"
+                }
+              },
+              "queryRef": "Rider.Rider type",
+              "nativeQueryRef": "Rider type"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Trips"
+                    }
+                  },
+                  "Property": "Total trips"
+                }
+              },
+              "queryRef": "Trips.Total trips",
+              "nativeQueryRef": "Total trips"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Trips"
+                    }
+                  },
+                  "Property": "Avg duration (min)"
+                }
+              },
+              "queryRef": "Trips.Avg duration (min)",
+              "nativeQueryRef": "Avg duration (min)"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Trips"
+                    }
+                  },
+                  "Property": "% over 30 min"
+                }
+              },
+              "queryRef": "Trips.% over 30 min",
+              "nativeQueryRef": "% over 30 min"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Trips"
+                    }
+                  },
+                  "Property": "% round trips"
+                }
+              },
+              "queryRef": "Trips.% round trips",
+              "nativeQueryRef": "% round trips"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Trips"
+                    }
+                  },
+                  "Property": "% e-bike"
+                }
+              },
+              "queryRef": "Trips.% e-bike",
+              "nativeQueryRef": "% e-bike"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Trips"
+                    }
+                  },
+                  "Property": "Avg distance (km)"
+                }
+              },
+              "queryRef": "Trips.Avg distance (km)",
+              "nativeQueryRef": "Avg distance (km)"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Rider profile'"
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "12D"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

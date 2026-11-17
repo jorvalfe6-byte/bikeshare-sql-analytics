@@ -1,0 +1,113 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+  "name": "fd1c4058ef0e358adc97",
+  "position": {
+    "x": 680,
+    "y": 92,
+    "z": 1004,
+    "height": 604,
+    "width": 576,
+    "tabOrder": 1004
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "drillFilterOtherVisuals": true,
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Station"
+                    }
+                  },
+                  "Property": "Station"
+                }
+              },
+              "queryRef": "Station.Station",
+              "nativeQueryRef": "Station"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Station activity"
+                    }
+                  },
+                  "Property": "Trips started"
+                }
+              },
+              "queryRef": "Station activity.Trips started",
+              "nativeQueryRef": "Trips started"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Station activity"
+                    }
+                  },
+                  "Property": "Net arrivals 7-9 h"
+                }
+              },
+              "queryRef": "Station activity.Net arrivals 7-9 h",
+              "nativeQueryRef": "Net arrivals 7-9 h"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Station activity"
+                  }
+                },
+                "Property": "Net arrivals 7-9 h"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Weekday mornings (7-9 h): docks that fill up'"
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "12D"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
